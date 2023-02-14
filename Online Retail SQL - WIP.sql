@@ -1,6 +1,3 @@
-SELECT * FROM public."Online Retail"
-DELETE FROM public."Online Retail" WHERE description IS NULL;
-DELETE FROM public."Online Retail" WHERE description LIKE '?%';
 --When importing the original dataset to postgresql, I reformatted the InvoiceDate to fit the datatype "timestamp without time zone"
 
 
@@ -268,12 +265,10 @@ Customer Segmentation: This can be performed by grouping customers based on spen
 
 
 
+-- Note for analyzing stuff:
 
+-- Time-series Analysis: This can be performed by analyzing the sales data over time to identify trends and patterns such as seasonality, cyclicality, and overall growth.
 
-Time-series Analysis: This can be performed by analyzing the sales data over time to identify trends and patterns such as seasonality, cyclicality, and overall growth.
-
-
-
-Geographic Analysis: This can be performed by analyzing the sales data by geographic location, such as country, region, or city, to identify regional trends and patterns.
+-- Geographic Analysis: This can be performed by analyzing the sales data by geographic location, such as country, region, or city, to identify regional trends and patterns.
 
 
