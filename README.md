@@ -6,6 +6,13 @@ Online Retail Exploratory SQL Project using PostgreSQL with the use of Tableau f
 Explore a public transnational data set of 1 CSV file containing all the transactions occurring between 01/12/2010 and 09/12/2011 for a UK-based and registered non-store online retail.
 
 
+## Methodology
+Explore and analyze the data set using the tools that I have been learning and using at work:
+- Excel for skimming and improving the efficiency of cleaning data
+- PostgreSQL for cleaning and analyzing data
+- Tableau for visualizing findings
+
+
 ## Attribute Information:
 * InvoiceNo: Invoice number. Nominal, a 6-digit integral number uniquely assigned to each transaction. If this code starts with letter 'c', it indicates a cancellation.
 * StockCode: Product (item) code. Nominal, a 5-digit integral number uniquely assigned to each distinct product.
@@ -15,13 +22,6 @@ Explore a public transnational data set of 1 CSV file containing all the transac
 * UnitPrice: Unit price. Numeric, Product price per unit in sterling.
 * CustomerID: Customer number. Nominal, a 5-digit integral number uniquely assigned to each customer.
 * Country: Country name. Nominal, the name of the country where each customer resides.
-
-
-## Methodology
-Explore and analyze the data set using the tools that I have been learning and using at work:
-- Excel for skimming and improving the efficiency of cleaning data
-- PostgreSQL for cleaning and analyzing data
-- Tableau for visualizing findings
 
 
 ## Primary Objective
