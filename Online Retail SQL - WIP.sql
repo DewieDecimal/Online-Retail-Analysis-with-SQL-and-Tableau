@@ -93,17 +93,19 @@ DELETE FROM public."Online Retail" WHERE description LIKE '?%';
 
 
 --Check if we can get anything from lost and found invoices
+/* Can't draw anything from this */
 WITH lost_invoices AS (
 SELECT invoice_no, stock_code, LOWER(description) AS description, quantity, invoice_date, unit_price, customer_id, country
 FROM public."Online Retail" 
 WHERE description LIKE '%ost%'
 OR	 description LIKE '%issin%'
-OR	 description LIKE '%ix%up%'),
-					
-found_invoices AS (
+OR	 description LIKE '%ix%up%'
+)					
+, found_invoices AS (
 SELECT invoice_no, stock_code, LOWER(description) AS description, quantity, invoice_date, unit_price, customer_id, country
 FROM public."Online Retail" 
-WHERE description LIKE '%found%')
+WHERE description LIKE '%found%'
+)
 					
 SELECT * 
 FROM lost_invoices l
@@ -140,9 +142,10 @@ ORDER BY 2 DESC;
 -- Sales over time period* (add country inside the bars/columns to do stacked ...) 
 --- Sales by months
 /* The sales of Dec-2010 is larger than Dec-2011 */ 
-WITH sales_with_month AS 
-(SELECT invoice_no, stock_code, description, quantity, unit_price, sales, customer_id, country, DATE_TRUNC('month', invoice_date) AS month
-FROM invoice_sales)
+WITH sales_with_month AS (
+SELECT invoice_no, stock_code, description, quantity, unit_price, sales, customer_id, country, DATE_TRUNC('month', invoice_date) AS month
+FROM invoice_sales
+)
 
 SELECT month, SUM(sales) AS sales_over_month
 FROM sales_with_month
@@ -150,10 +153,11 @@ GROUP BY 1
 ORDER BY month;
 
 --- Sales by 2011's quarters 
-WITH sales_with_quarter AS 
-(SELECT invoice_no, stock_code, description, quantity, unit_price, sales, customer_id, country, invoice_date, DATE_PART('quarter', invoice_date) AS quarter
+WITH sales_with_quarter AS (
+SELECT invoice_no, stock_code, description, quantity, unit_price, sales, customer_id, country, invoice_date, DATE_PART('quarter', invoice_date) AS quarter
 FROM invoice_sales
-WHERE invoice_date > '2010-12-31')
+WHERE invoice_date > '2010-12-31'
+)
 
 SELECT quarter, SUM(sales) AS sales_by_quarter
 FROM sales_with_quarter
@@ -182,33 +186,38 @@ ORDER BY AOV_month DESC;
 -- Customer Analysis
 -- Create a View to analyze customer-related metrics
 /* The starting month which is Dec-2010 will be marked as month '0' */
-DROP VIEW IF exists customer_view;
-CREATE VIEW customer_view AS
+DROP TABLE IF exists customer_table;
+CREATE TABLE customer_table AS
 SELECT *, 
 CASE WHEN invoice_date < '2011-01-01' THEN 0 ELSE DATE_PART('month', invoice_date) END AS visit_month
 FROM public."Online Retail"
-WHERE unit_price > 0 AND customer_id IS NOT NULL;
+WHERE unit_price > 0 
+AND   quantity > 0
+AND   customer_id IS NOT NULL;
 
 --- Customer count by month
 SELECT visit_month, COUNT(DISTINCT customer_id) AS monthly_customer_count
-FROM customer_view
+FROM customer_table
 GROUP BY 1
 ORDER BY 1 ASC;
 
 --- Customer Retention Rate by Month
-WITH customer_visits AS (
+/* Create views for calculation */
+DROP VIEW IF exists customer_visits;
+CREATE VIEW customer_visits AS
 SELECT visit_month, customer_id
-FROM customer_view
+FROM customer_table
 GROUP BY 1, 2
-ORDER BY 2 ASC
-),
-customer_first_visits AS (
+ORDER BY 2 ASC;
+
+DROP VIEW IF exists customer_first_visits;
+CREATE VIEW customer_first_visits AS
 /* Calculate the first month of login for every user using the MIN function and GROUP BY to return the first month of every user. */
 SELECT customer_id, MIN(visit_month) AS first_month
-FROM customer_view
-GROUP BY 1
-),
-customer_cohort AS (
+FROM customer_table
+GROUP BY 1;
+
+WITH customer_cohort AS (
 SELECT first_month,
 		SUM(CASE WHEN month_number = 0 THEN 1 ELSE 0 END) AS after_0_month,
 		SUM(CASE WHEN month_number = 1 THEN 1 ELSE 0 END) AS after_1_month,
@@ -231,44 +240,106 @@ ON v.customer_id = fv.customer_id) AS customer_month_number
 GROUP BY 1
 ORDER BY 1
 )
-SELECT first_month, 
-		after_0_month*100/after_0_month AS crt_0_month, 
-		after_1_month*100/after_0_month AS crt_1_month,
-		after_2_month*100/after_0_month AS crt_2_month,	
-		after_3_month*100/after_0_month AS crt_3_month,	
-		after_4_month*100/after_0_month AS crt_4_month,	
-		after_5_month*100/after_0_month AS crt_5_month,	
-		after_6_month*100/after_0_month AS crt_6_month,	
-		after_7_month*100/after_0_month AS crt_7_month,	
-		after_8_month*100/after_0_month AS crt_8_month,	
-		after_9_month*100/after_0_month AS crt_9_month,	
-		after_10_month*100/after_0_month AS crt_10_month,	
-		after_11_month*100/after_0_month AS crt_11_month,	
-		after_12_month*100/after_0_month AS crt_12_month
+
+SELECT first_month, after_0_month AS new_customer,
+		after_0_month*100/after_0_month AS rt_0_month, 
+		after_1_month*100/after_0_month AS rt_1_month,
+		after_2_month*100/after_0_month AS rt_2_month,	
+		after_3_month*100/after_0_month AS rt_3_month,	
+		after_4_month*100/after_0_month AS rt_4_month,	
+		after_5_month*100/after_0_month AS rt_5_month,	
+		after_6_month*100/after_0_month AS rt_6_month,	
+		after_7_month*100/after_0_month AS rt_7_month,	
+		after_8_month*100/after_0_month AS rt_8_month,	
+		after_9_month*100/after_0_month AS rt_9_month,	
+		after_10_month*100/after_0_month AS rt_10_month,	
+		after_11_month*100/after_0_month AS rt_11_month,	
+		after_12_month*100/after_0_month AS rt_12_month
 FROM customer_cohort
 ORDER BY 1
 
+--- Customer Lifetime Value 
+DROP VIEW IF exists customer_life_time_value;
+CREATE VIEW customer_life_time_value AS
+WITH average_purchase_value AS(
+SELECT customer_id,
+	   ROUND(AVG(quantity * unit_price)) AS avg_value
+FROM customer_table
+GROUP BY 1
+)
+, purchase_frequency AS(
+SELECT customer_id, COUNT(visit_month) AS frequency
+FROM customer_visits
+GROUP BY 1 
+)
+, average_life_span AS(
+SELECT v.customer_id, AVG(v.visit_month - fv.first_month) AS average_life_span
+FROM customer_visits v
+JOIN customer_first_visits fv ON v.customer_id = fv.customer_id
+GROUP BY 1
+ORDER BY 1
+)
+
+SELECT customer_id, ROUND(v.avg_value * f.frequency * l.average_life_span) AS life_time_value
+FROM average_purchase_value v
+NATURAL JOIN purchase_frequency f
+NATURAL JOIN average_life_span l 
 
 --- RFM
+DROP TABLE IF exists customer_rfm_table;
+CREATE TABLE customer_rfm_table AS
+WITH customer_last_visits AS(
+SELECT
+	customer_id,
+	MAX(visit_month) AS last_month
+FROM customer_visits
+GROUP BY customer_id
+)
+, customer_frequency AS(
+SELECT customer_id, COUNT(visit_month) AS frequency
+FROM customer_visits
+GROUP BY 1
+)
+, customer_monetary_value AS(
+SELECT customer_id,
+	   SUM(quantity * unit_price) AS monetary_value
+FROM customer_table
+GROUP BY 1
+)
+, customer_rfm_ranking AS(
+SELECT f.customer_id,
+	   (SELECT MAX(visit_month) FROM customer_table) - l.last_month AS recency,
+	   fr.frequency,
+	   m.monetary_value AS monetary,
+	   NTILE(3) OVER (ORDER BY (SELECT MAX(visit_month) FROM customer_table) - l.last_month DESC) as R_rank,
+	   NTILE(3) OVER (ORDER BY fr.frequency) as F_rank,
+	   NTILE(3) OVER (ORDER BY m.monetary_value) as M_rank,
+	   CONCAT(NTILE(3) OVER (ORDER BY (SELECT MAX(visit_month) FROM customer_table) - l.last_month DESC)::text, 					  NTILE(3) OVER (ORDER BY fr.frequency)::text,
+			  NTILE(3) OVER (ORDER BY m.monetary_value)::text) AS RFM_rank
+FROM customer_last_visits l
+NATURAL JOIN customer_first_visits f 
+NATURAL JOIN customer_frequency fr 
+NATURAL JOIN customer_monetary_value m
+)
 
---- Churn Rate
+
+SELECT customer_id, r_rank, f_rank, m_rank, rfm_rank,
+CASE
+	WHEN rfm_rank IN ('111') THEN 'Lost' 
+	WHEN rfm_rank IN ('112','121','113', '122') THEN 'Cooled' -- Customers who purchased a long time ago
+	WHEN rfm_rank IN ('131', '132', '123', '133') THEN 'Need reheat' -- Slipping customers who purchased frequently and largely 
+	WHEN rfm_rank IN ('222', '213', '223', '313', '212', '221') THEN 'Potential' -- Recent customers with decent monetary value
+	WHEN rfm_rank IN ('311', '312', '211') THEN 'New' -- New customers
+	WHEN rfm_rank IN ('321', '322', '331', '231', '232', '233') THEN 'Hot' -- Loyal customers
+	WHEN rfm_rank IN ('323', '332', '333') THEN 'Champion' -- Loyal customers with high value
+	END AS rfm_segment 
+FROM customer_rfm_ranking;
 
 
---- Customer Lifetime Value over a period
-Customer Lifetime Value (CLV): This is a prediction of the net profit attributed to the entire future relationship with a customer.
 
 
---- Customer Segmentation
-Customer Segmentation: This can be performed by grouping customers based on spending patterns, or location.
+Time-series Analysis: This can be performed by analyzing the sales data over time to identify trends and patterns such as seasonality, cyclicality, and overall growth.
 
 
 
-
-
--- Note for analyzing stuff:
-
--- Time-series Analysis: This can be performed by analyzing the sales data over time to identify trends and patterns such as seasonality, cyclicality, and overall growth.
-
--- Geographic Analysis: This can be performed by analyzing the sales data by geographic location, such as country, region, or city, to identify regional trends and patterns.
-
-
+Geographic Analysis: This can be performed by analyzing the sales data by geographic location, such as country, region, or city, to identify regional trends and patterns.
