@@ -37,7 +37,7 @@ Explore and analyze the data set using the tools that I have been learning and u
 3. Check abnormal invoices and non-transactional invoices for additional findings.
 
 
-4. Analyze sales metrics:
+4. Sales analysis:
 * Top 10 countries by total sales
 * Country with the highest sales by a single invoice in UK
 * Sales over a time period (by month, by quarter)
@@ -45,17 +45,21 @@ Explore and analyze the data set using the tools that I have been learning and u
 * Average order value
 
 
-5. Analyze customer metrics
+5. Customer analysis:
 * Customer retention rate by month
 * RFM
 * Customer lifetime value
-* Customer segmentation
+* Customer fraud detection
+* Product recommendation for customer based on customer's purchase history
 
+6. Inventory analysis:
+* Popular products
+* Product cancellation rate
+* Products that are most frequently purchased together
 
-6. Export tables as csv files.
+7. Export tables as csv files.
 
-
-7. Import SQL tables into Tableau to visualize findings.
+8. Import SQL tables into Tableau to visualize findings.
 
 
 ## Bonus Objective
