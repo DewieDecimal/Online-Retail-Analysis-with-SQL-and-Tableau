@@ -114,8 +114,8 @@ JOIN found_invoices f ON l.country = f.country AND l.stock_code = f.stock_code
 -----------------------------------------------
 
 -- Create a view to analyze sales-related metrics
-DROP VIEW IF exists invoice_sales;
-CREATE VIEW invoice_sales AS
+DROP TABLE IF exists invoice_sales;
+CREATE TABLE invoice_sales AS
 (SELECT *, quantity * unit_price AS sales
 FROM public."Online Retail"
 WHERE quantity > 0 
@@ -184,7 +184,7 @@ ORDER BY AOV_month DESC;
 ------------------------------------------
 
 -- Customer Analysis
--- Create a View to analyze customer-related metrics
+-- Create a table/ select a data frame to analyze customer-related metrics
 /* The starting month which is Dec-2010 will be marked as month '0' */
 DROP TABLE IF exists customer_table;
 CREATE TABLE customer_table AS
@@ -233,10 +233,10 @@ SELECT first_month,
 		SUM(CASE WHEN month_number = 11 THEN 1 ELSE 0 END) AS after_11_month,
 		SUM(CASE WHEN month_number = 12 THEN 1 ELSE 0 END) AS after_12_month
 FROM 
-(SELECT v.customer_id, fv.first_month, v.visit_month, v.visit_month - fv.first_month AS month_number
-FROM customer_visits v
-JOIN customer_first_visits fv
-ON v.customer_id = fv.customer_id) AS customer_month_number
+	(SELECT v.customer_id, fv.first_month, v.visit_month, v.visit_month - fv.first_month AS month_number
+	FROM customer_visits v
+	JOIN customer_first_visits fv
+	ON v.customer_id = fv.customer_id) AS customer_month_number
 GROUP BY 1
 ORDER BY 1
 )
@@ -268,9 +268,12 @@ FROM customer_table
 GROUP BY 1
 )
 , purchase_frequency AS(
-SELECT customer_id, COUNT(visit_month) AS frequency
-FROM customer_visits
-GROUP BY 1 
+SELECT customer_id, COUNT(DISTINCT invoice_date) AS frequency
+FROM public."Online Retail"
+WHERE unit_price > 0 
+AND   quantity > 0
+AND   customer_id IS NOT NULL
+GROUP BY 1
 )
 , average_life_span AS(
 SELECT v.customer_id, AVG(v.visit_month - fv.first_month) AS average_life_span
@@ -296,8 +299,11 @@ FROM customer_visits
 GROUP BY customer_id
 )
 , customer_frequency AS(
-SELECT customer_id, COUNT(visit_month) AS frequency
-FROM customer_visits
+SELECT customer_id, COUNT(DISTINCT invoice_date) AS frequency
+FROM public."Online Retail"
+WHERE unit_price > 0 
+AND   quantity > 0
+AND   customer_id IS NOT NULL
 GROUP BY 1
 )
 , customer_monetary_value AS(
@@ -335,11 +341,107 @@ CASE
 	END AS rfm_segment 
 FROM customer_rfm_ranking;
 
+--- Customer fraud detection 
+/* An acceptable cancel_rate should be around 10% of a customer's total orders */
+WITH customer_cancel_count AS(
+SELECT customer_id, COUNT(stock_code) cancel_count
+FROM public."Online Retail"
+WHERE quantity < 0
+	  AND customer_id IS NOT NULL
+	  AND LENGTH(invoice_no) >= 6 
+GROUP BY 1
+ORDER BY 2 DESC
+)
+, cancel_count_support AS(
+SELECT c.customer_id, COUNT(p.invoice_date) AS customer_total_order
+FROM customer_cancel_count c
+JOIN public."Online Retail" p ON c.customer_id = p.customer_id
+GROUP BY 1
+)
+
+SELECT s.customer_id, 100*c.cancel_count/s.customer_total_order AS cancel_rate
+FROM cancel_count_support s
+JOIN customer_cancel_count c
+ON s.customer_id = c.customer_id
+ORDER BY 2 DESC;
+
+--- Product recommendation for customer based on customer's purchase history
+SELECT customer_id, stock_code, description
+FROM public."Online Retail"
+WHERE customer_id IS NOT NULL
+GROUP BY 1, 2, 3
+
+------------------------------------------
+
+-- Inventory analysis
+--- Popular products for us to stock more
+SELECT stock_code, SUM(quantity) AS total_quantity
+FROM public."Online Retail"
+GROUP BY 1
+ORDER BY 2 DESC;
+
+--- Products with high cancellation rate for us to stock less
+WITH product_cancel_count AS(
+SELECT stock_code, COUNT(invoice_no) AS cancel_frequency
+FROM public."Online Retail"
+WHERE invoice_no LIKE 'C%' 
+	AND LENGTH(stock_code) >= 5 
+	AND LENGTH(invoice_no) >= 6
+GROUP BY 1
+ORDER BY 2 DESC
+)
+
+SELECT m.stock_code, 100*c.cancel_frequency/m.product_total_order AS product_cancel_rate
+FROM
+	(SELECT stock_code, COUNT(DISTINCT invoice_date) AS product_total_order
+	FROM public."Online Retail"
+	GROUP BY 1
+	ORDER BY 2 DESC) AS m
+JOIN product_cancel_count c
+ON m.stock_code = c.stock_code
+ORDER BY 2 DESC;
 
 
+---- Recommend to customer the products that are most frequently purchased together
+DROP TABLE IF exists product_recommondation_by_frequency;
+CREATE TABLE product_recommondation_by_frequency AS
+WITH sub AS(
+SELECT invoice_date, COUNT(invoice_date)
+FROM public."Online Retail"
+GROUP BY 1
+HAVING COUNT(invoice_date) > 1
+)
+, sub_2 AS(
+SELECT invoice_date, ROW_NUMBER() OVER (ORDER BY invoice_date) AS basket_number
+FROM 
+(SELECT DISTINCT invoice_date FROM sub) AS sub_2_support
+)
+, big_invoice_with_basket_number AS(
+SELECT s.invoice_date, p.stock_code, p.description, s.basket_number
+FROM public."Online Retail" p
+RIGHT JOIN sub_2 s ON s.invoice_date = p.invoice_date
+WHERE unit_price > 0 
+	  AND quantity > 0 
+	  AND customer_id IS NOT NULL
+	  AND LENGTH(stock_code) >= 5 
+GROUP BY 1,2,3,4
+ORDER BY 1
+)
+, basket_group AS (
+SELECT c.product_bought, c.bought_with, COUNT(*) AS bought_together_frequency
+FROM
+	(SELECT a.basket_number, a.stock_code AS product_bought, b.stock_code AS bought_with 
+	FROM big_invoice_with_basket_number a
+	JOIN big_invoice_with_basket_number b
+	ON a.basket_number = b.basket_number AND a.stock_code != b.stock_code) AS c
+GROUP BY 1, 2
+HAVING COUNT(*) > 2
+)
 
-Time-series Analysis: This can be performed by analyzing the sales data over time to identify trends and patterns such as seasonality, cyclicality, and overall growth.
-
-
-
-Geographic Analysis: This can be performed by analyzing the sales data by geographic location, such as country, region, or city, to identify regional trends and patterns.
+SELECT s.product_bought, b.bought_with, s.highest_frequency
+FROM 
+	(SELECT product_bought, MAX(bought_together_frequency) AS highest_frequency
+	FROM basket_group 
+	GROUP BY 1) AS s
+LEFT JOIN basket_group b ON b.product_bought = s.product_bought AND s.highest_frequency = b.bought_together_frequency
+ORDER BY 1;
