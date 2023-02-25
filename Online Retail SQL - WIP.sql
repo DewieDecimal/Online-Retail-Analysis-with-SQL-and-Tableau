@@ -41,13 +41,13 @@ SELECT * FROM public."Online Retail" WHERE invoice_no LIKE 'C%'
 
 
 -- Country count as percentage of the grand total 
-/* 91.36% of invoices are from the UK */
+/* 91.355% of invoices are from the UK */
 WITH country_count_table as (
 		SELECT country, COUNT(country) as count
 		FROM public."Online Retail"
 		GROUP BY country)
 
-SELECT country, count, 100*count/SUM(count) OVER () AS percentage_of_total
+SELECT country, count, ROUND(100*count/SUM(count) OVER (), 3) AS percentage_of_total
 FROM country_count_table
 GROUP BY country, count
 ORDER BY 3 DESC;
@@ -124,9 +124,10 @@ WHERE quantity > 0
   AND stock_code NOT LIKE 'AMAZON%'
 ORDER BY sales DESC);
 
--- Sales Analysis by Country
+-- Sales Analysis 
 --- Top 10 countries by total sales
-SELECT country, SUM(sales) AS total_sales
+/* Netherlands, Australia, Japan, Sweden, and Denmark are the top five countries that should be considered for operations scaling */
+SELECT country, ROUND(AVG(sales)) AS average_sales
 FROM invoice_sales
 GROUP BY 1
 ORDER BY 2 DESC
@@ -164,22 +165,25 @@ FROM sales_with_quarter
 GROUP BY 1
 ORDER BY 1;
 
+--- Average basket size by country
+/* Netherlands, Australia, Japan, Sweden, and Denmark have high average sales due to their high average basket size */
+SELECT i.country, ROUND(AVG(sub.basket_size)) average_basket_size
+FROM (
+	SELECT invoice_no, ROUND(SUM(quantity)::NUMERIC/ COUNT(invoice_no))  AS basket_size
+	FROM invoice_sales
+	WHERE stock_code NOT LIKE 'BANK%'
+	GROUP BY 1) AS sub
+JOIN invoice_sales i ON i.invoice_no = sub.invoice_no
+GROUP BY 1
+ORDER BY 2 DESC
 
--- Sales Analysis by Retail Industry
---- Basket Size
-SELECT invoice_no, ROUND(SUM(quantity)::NUMERIC/ COUNT(invoice_no), 2)  AS basket_size
+--- Average Order Value (AOV) by month
+/* AOV seems to be consistent across the months in 2011, however, none of them are higher than Dec-2010's AOV. We may say that the stores did worse than the previous year or there could be a spike due to something happened around that month */
+SELECT DATE_TRUNC('month', invoice_date) AS month, ROUND(SUM(sales)/ SUM(quantity), 2) AS average_order_value
 FROM invoice_sales
 WHERE stock_code NOT LIKE 'BANK%'
 GROUP BY 1
-ORDER BY 2 DESC;
-
---- Average Order Value (AOV)
-/* AOV seems to be consistent across the months in 2011, however, none of them are higher than Dec-2010's AOV. We may say the the stores did worse than the previous year or there could be a spike due to something happened around that month */
-SELECT DATE_TRUNC('month', invoice_date) AS AOV_month, ROUND(SUM(sales)/ SUM(quantity), 2) AS average_order_value
-FROM invoice_sales
-WHERE stock_code NOT LIKE 'BANK%'
-GROUP BY 1
-ORDER BY AOV_month DESC;
+ORDER BY month DESC;
 
 ------------------------------------------
 
@@ -196,8 +200,11 @@ AND   quantity > 0
 AND   customer_id IS NOT NULL;
 
 --- Customer count by month
-SELECT visit_month, COUNT(DISTINCT customer_id) AS monthly_customer_count
-FROM customer_table
+SELECT DATE_TRUNC('month', invoice_date) AS month, COUNT(DISTINCT customer_id) AS monthly_customer_count
+FROM public."Online Retail"
+WHERE unit_price > 0 
+AND   quantity > 0
+AND   customer_id IS NOT NULL
 GROUP BY 1
 ORDER BY 1 ASC;
 
@@ -217,6 +224,8 @@ SELECT customer_id, MIN(visit_month) AS first_month
 FROM customer_table
 GROUP BY 1;
 
+DROP VIEW IF exists customer_retention_rate_view;
+CREATE VIEW customer_retention_rate_view AS
 WITH customer_cohort AS (
 SELECT first_month,
 		SUM(CASE WHEN month_number = 0 THEN 1 ELSE 0 END) AS after_0_month,
@@ -256,7 +265,36 @@ SELECT first_month, after_0_month AS new_customer,
 		after_11_month*100/after_0_month AS rt_11_month,	
 		after_12_month*100/after_0_month AS rt_12_month
 FROM customer_cohort
-ORDER BY 1
+ORDER BY 1;
+
+--- Average retention rate for all customers
+SELECT ROUND(AVG(rt_0_month)) AS average_retention_rate
+FROM   (SELECT rt_0_month FROM customer_retention_rate_view
+		UNION ALL
+		SELECT rt_1_month FROM customer_retention_rate_view
+		UNION ALL
+		SELECT rt_2_month FROM customer_retention_rate_view
+		UNION ALL
+		SELECT rt_3_month FROM customer_retention_rate_view
+		UNION ALL
+		SELECT rt_4_month FROM customer_retention_rate_view
+		UNION ALL
+		SELECT rt_5_month FROM customer_retention_rate_view
+		UNION ALL
+		SELECT rt_6_month FROM customer_retention_rate_view
+		UNION ALL
+		SELECT rt_7_month FROM customer_retention_rate_view
+		UNION ALL
+		SELECT rt_8_month FROM customer_retention_rate_view
+		UNION ALL
+		SELECT rt_9_month FROM customer_retention_rate_view
+		UNION ALL
+		SELECT rt_10_month FROM customer_retention_rate_view
+		UNION ALL
+		SELECT rt_11_month FROM customer_retention_rate_view
+		UNION ALL
+		SELECT rt_12_month FROM customer_retention_rate_view) AS sub 
+WHERE rt_0_month != 0;
 
 --- Customer Lifetime Value 
 DROP VIEW IF exists customer_life_time_value;
@@ -286,7 +324,8 @@ ORDER BY 1
 SELECT customer_id, ROUND(v.avg_value * f.frequency * l.average_life_span) AS life_time_value
 FROM average_purchase_value v
 NATURAL JOIN purchase_frequency f
-NATURAL JOIN average_life_span l 
+NATURAL JOIN average_life_span l
+ORDER BY 2 DESC;
 
 --- RFM
 DROP TABLE IF exists customer_rfm_table;
@@ -336,8 +375,8 @@ CASE
 	WHEN rfm_rank IN ('131', '132', '123', '133') THEN 'Need reheat' -- Slipping customers who purchased frequently and largely 
 	WHEN rfm_rank IN ('222', '213', '223', '313', '212', '221') THEN 'Potential' -- Recent customers with decent monetary value
 	WHEN rfm_rank IN ('311', '312', '211') THEN 'New' -- New customers
-	WHEN rfm_rank IN ('321', '322', '331', '231', '232', '233') THEN 'Hot' -- Loyal customers
-	WHEN rfm_rank IN ('323', '332', '333') THEN 'Champion' -- Loyal customers with high value
+	WHEN rfm_rank IN ('321', '322', '331', '231', '232', '233', '323', '332') THEN 'Hot'
+	WHEN rfm_rank IN ('333') THEN 'Champion' -- Ideal customers
 	END AS rfm_segment 
 FROM customer_rfm_ranking;
 
@@ -363,22 +402,31 @@ SELECT s.customer_id, 100*c.cancel_count/s.customer_total_order AS cancel_rate
 FROM cancel_count_support s
 JOIN customer_cancel_count c
 ON s.customer_id = c.customer_id
-ORDER BY 2 DESC;
+WHERE 100*c.cancel_count/s.customer_total_order != 0
+ORDER BY 2 DESC
 
 --- Product recommendation for customer based on customer's purchase history
 SELECT customer_id, stock_code, description
 FROM public."Online Retail"
 WHERE customer_id IS NOT NULL
 GROUP BY 1, 2, 3
+ORDER BY 1
 
 ------------------------------------------
 
 -- Inventory analysis
 --- Popular products for us to stock more
-SELECT stock_code, SUM(quantity) AS total_quantity
-FROM public."Online Retail"
+WITH CTE AS(
+SELECT stock_code, SUM(quantity) AS total_purchased_quantity
+FROM invoice_sales
 GROUP BY 1
-ORDER BY 2 DESC;
+ORDER BY 2 DESC
+)
+
+SELECT DISTINCT a.stock_code, b.description, a.total_purchased_quantity
+FROM CTE a
+JOIN public."Online Retail" b ON a.stock_code = b.stock_code
+ORDER BY 3 DESC;
 
 --- Products with high cancellation rate for us to stock less
 WITH product_cancel_count AS(
@@ -390,7 +438,7 @@ WHERE invoice_no LIKE 'C%'
 GROUP BY 1
 ORDER BY 2 DESC
 )
-
+, product_cancel_rate_support AS(
 SELECT m.stock_code, 100*c.cancel_frequency/m.product_total_order AS product_cancel_rate
 FROM
 	(SELECT stock_code, COUNT(DISTINCT invoice_date) AS product_total_order
@@ -399,8 +447,14 @@ FROM
 	ORDER BY 2 DESC) AS m
 JOIN product_cancel_count c
 ON m.stock_code = c.stock_code
-ORDER BY 2 DESC;
+ORDER BY 2 DESC
+)
 
+SELECT DISTINCT a.stock_code, b.description, a.product_cancel_rate
+FROM product_cancel_rate_support a
+LEFT JOIN public."Online Retail" b ON a.stock_code = b.stock_code
+WHERE a.product_cancel_rate > 10
+ORDER BY 3 DESC
 
 ---- Recommend to customer the products that are most frequently purchased together
 DROP TABLE IF exists product_recommondation_by_frequency;
