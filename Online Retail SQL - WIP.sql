@@ -139,8 +139,6 @@ FROM invoice_sales
 GROUP BY 1
 ORDER BY 2 DESC;
 
-
--- Sales over time period* (add country inside the bars/columns to do stacked ...) 
 --- Sales by months
 /* The sales of Dec-2010 is larger than Dec-2011 */ 
 WITH sales_with_month AS (
@@ -383,9 +381,10 @@ FROM customer_rfm_ranking;
 --- Customer fraud detection 
 /* An acceptable cancel_rate should be around 10% of a customer's total orders */
 WITH customer_cancel_count AS(
-SELECT customer_id, COUNT(stock_code) cancel_count
+SELECT customer_id, COUNT(invoice_no) cancel_count_per_customer
 FROM public."Online Retail"
 WHERE quantity < 0
+	  AND invoice_no LIKE 'C%'
 	  AND customer_id IS NOT NULL
 	  AND LENGTH(invoice_no) >= 6 
 GROUP BY 1
@@ -398,12 +397,12 @@ JOIN public."Online Retail" p ON c.customer_id = p.customer_id
 GROUP BY 1
 )
 
-SELECT s.customer_id, 100*c.cancel_count/s.customer_total_order AS cancel_rate
+SELECT s.customer_id, 100*c.cancel_count_per_customer/s.customer_total_order AS cancel_rate, c.cancel_count_per_customer
 FROM cancel_count_support s
 JOIN customer_cancel_count c
 ON s.customer_id = c.customer_id
-WHERE 100*c.cancel_count/s.customer_total_order != 0
-ORDER BY 2 DESC
+WHERE 100*c.cancel_count_per_customer/s.customer_total_order != 0
+ORDER BY 3 DESC
 
 --- Product recommendation for customer based on customer's purchase history
 SELECT customer_id, stock_code, description
@@ -450,11 +449,12 @@ ON m.stock_code = c.stock_code
 ORDER BY 2 DESC
 )
 
-SELECT DISTINCT a.stock_code, b.description, a.product_cancel_rate
+SELECT DISTINCT a.stock_code, b.description, a.product_cancel_rate, c.cancel_frequency
 FROM product_cancel_rate_support a
 LEFT JOIN public."Online Retail" b ON a.stock_code = b.stock_code
+LEFT JOIN product_cancel_count c ON b.stock_code = c.stock_code
 WHERE a.product_cancel_rate > 10
-ORDER BY 3 DESC
+ORDER BY 4 DESC
 
 ---- Recommend to customer the products that are most frequently purchased together
 DROP TABLE IF exists product_recommondation_by_frequency;
