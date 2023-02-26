@@ -1,5 +1,5 @@
 # Online Retail Analysis with SQL and Tableau
-Online Retail Exploratory SQL Project using PostgreSQL with the use of Tableau for visualizing findings
+Online Retail Exploratory SQL Project using PostgreSQL with the use of Tableau for visualizing findings (https://public.tableau.com/app/profile/duy.nguyen2347/viz/OnlineRetailWIP/MainDashboard)
 
 
 # Project Description
