@@ -100,3 +100,5 @@ The analysis provides several insights into the online retail dataset, including
 *Note: We only have the transactions occurring between 01/12/2010 and 09/12/2011, hence we don't have enough data to compare December 2011 against the others*
 * Sales in November 2011 ($1,452,090) are significantly higher compared to previous months, indicating a potential boost from holiday shopping. Similarly, September 2011 ($1,028,177) also shows a spike in sales, possibly due to seasonal factors or specific promotions.
 * This could indicate a potential seasonal trend. Still, there are not enough data points to conclude that there is a seasonality.
+
+Work in progress
