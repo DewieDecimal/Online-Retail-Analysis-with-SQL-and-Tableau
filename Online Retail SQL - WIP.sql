@@ -140,7 +140,6 @@ GROUP BY 1
 ORDER BY 2 DESC;
 
 --- Sales by months
-/* The sales of Dec-2010 is larger than Dec-2011 */ 
 WITH sales_with_month AS (
 SELECT invoice_no, stock_code, description, quantity, unit_price, sales, customer_id, country, DATE_TRUNC('month', invoice_date) AS month
 FROM invoice_sales
