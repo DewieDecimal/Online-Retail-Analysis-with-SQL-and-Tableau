@@ -95,7 +95,7 @@ All of the bad invoices or blank invoices are registered as from the UK. It mean
 
 ![image](https://github.com/DewieDecimal/Online-Retail-Analysis-with-SQL-and-Tableau/assets/125356334/a06066e4-02dc-4549-8c19-06bf3869d5ea)
 * The top countries with the highest average sales are the Netherlands, Australia, Japan, Sweden, Denmark, etc. This is due to their high average basket sizes. Still, it indicates <b>potential areas for scaling operations<b>.
-* In combination with market research initiatives regarding the market potential, competitive landscape, culture, etc. we could <b>consider upselling, cross-selling, and introducing higher-priced products or services when targeting these countries<b>.
+* In combination with market research initiatives regarding the market potential, competitive landscape, culture, etc. we could <b>consider upselling, cross-selling, and introducing higher-priced products or services when targeting these countries</b>.
 * By focusing on countries with higher average basket sizes, we can allocate resources and marketing efforts more strategically to maximize revenue.
 * United Kingdom where most of our customers are from, ranks 32/38 with an average basket size of 10 products/items per transaction.
 
@@ -106,13 +106,13 @@ All of the bad invoices or blank invoices are registered as from the UK. It mean
 
 ![image](https://github.com/DewieDecimal/Online-Retail-Analysis-with-SQL-and-Tableau/assets/125356334/472f1375-ebff-44e1-b5e6-8a89e94ba292)
 *Note: We only have the transactions occurring between 01/12/2010 and 09/12/2011, hence we don't have enough data to make any meaningful conclusions about December 2011*
-* There is an obvious positive correlation between the number of customers and sales figures. However, the sales in some months are not on par with the customer count, such as Feb 2011 and Apr 2011. If there are months with a high customer count but relatively low sales, it may indicate that <b>there is room to improve the pricing strategies and encourage customers to spend more during their visits<b>.
+* There is an obvious positive correlation between the number of customers and sales figures. However, the sales in some months are not on par with the customer count, such as Feb 2011 and Apr 2011. If there are months with a high customer count but relatively low sales, it may indicate that <b>there is room to improve the pricing strategies and encourage customers to spend more during their visits</b>.
 
 ![image](https://github.com/DewieDecimal/Online-Retail-Analysis-with-SQL-and-Tableau/assets/125356334/88e005ab-d38d-4e84-ad75-afca24ac3c13)
 * The customer retention rates are consistent over the months. However, these retention rates are still low (averaging 23%), and we should aim for an average of 60-70%.
 * The customer retention rates after the first month should have been larger than the later months, however, it doesn't seem to be the case here.
-* It is recommended that we <b>improve the onboarding process for new customers, personalize the customer experience, enhance the customer support quality, offer loyalty/membership programs, etc.<b>
+* It is recommended that we <b>improve the onboarding process for new customers, personalize the customer experience, enhance the customer support quality, offer loyalty/membership programs, etc.</b>
 
 ![image](https://github.com/DewieDecimal/Online-Retail-Analysis-with-SQL-and-Tableau/assets/125356334/f89aba33-df59-4f53-8d96-6b0d062e6180)
 * Most of the noticeable "bubbles" range around 1-18%. Still, the "50% bubble" and "100% bubble" are quite big.
-* If there are 21 customers who have a 50% cancellation rate and 33 customers who have a 100% cancellation rate, it is quite concerning. Hence, we should take further steps to <b>investigate reasons for cancellations and enhance customer support and customer experience<b>.
+* If there are 21 customers who have a 50% cancellation rate and 33 customers who have a 100% cancellation rate, it is quite concerning. Hence, we should take further steps to <b>investigate reasons for cancellations and enhance customer support and customer experience</b>.
