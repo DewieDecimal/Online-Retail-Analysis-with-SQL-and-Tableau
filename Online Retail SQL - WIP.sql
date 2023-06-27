@@ -1,6 +1,3 @@
---When importing the original dataset to postgresql, I reformatted the InvoiceDate to fit the datatype "timestamp without time zone"
-
-
 --Check if columns are looking alright
 /*  Findings:
 	+ Some products are being sold on amazon, ebay, dotcom, so these stores are selling through an additional channel
@@ -55,18 +52,15 @@ ORDER BY 3 DESC;
 
 -- Check blank descriptions
 /* All of these blank invoices are from the UK.
-   Invoices with blank descriptions don't have UnitPrice and CustomerID, so we don't have enough information to fill in these blanks.
-   Since we don't seem to learn anything from these invoices, we could delete them. */ 
+   Invoices with blank descriptions don't have UnitPrice and CustomerID, so we don't have enough information to fill in these blanks. */
 SELECT * FROM public."Online Retail"
 WHERE description IS NULL;
-
+/*Since we don't seem to learn anything from these invoices, we could delete them. */ 
 DELETE FROM public."Online Retail" WHERE description is NULL;
 
 
 -- Check for bad invoices
-/* Bad invoices are the one which are described as lost, damaged, smashed, mixed up, or given away
-   These bad invoices are the results of poor inventory management and they are all from the UK.
-   It also means other stores in other countries are doing good in managing inventory */
+/* Bad invoices are the ones that are described as lost, damaged, smashed, mixed up, or given away*/
 SELECT invoice_no, stock_code, LOWER(description) AS description, quantity, invoice_date, unit_price, customer_id, country 
 FROM (SELECT * 
 	  FROM public."Online Retail"
@@ -133,7 +127,7 @@ GROUP BY 1
 ORDER BY 2 DESC
 LIMIT 10;
 
---- Country with the highest sales by a single invoice is UK
+--- Country with the highest sales by a single invoice
 SELECT country, MAX(sales) AS max_sales
 FROM invoice_sales
 GROUP BY 1
@@ -377,7 +371,7 @@ CASE
 	END AS rfm_segment 
 FROM customer_rfm_ranking;
 
---- Customer fraud detection 
+--- Customer cancellation rate
 /* An acceptable cancel_rate should be around 10% of a customer's total orders */
 WITH customer_cancel_count AS(
 SELECT customer_id, COUNT(invoice_no) cancel_count_per_customer
@@ -426,7 +420,7 @@ FROM CTE a
 JOIN public."Online Retail" b ON a.stock_code = b.stock_code
 ORDER BY 3 DESC;
 
---- Products with high cancellation rate for us to stock less
+--- Products with high cancellation rates for us to stock less
 WITH product_cancel_count AS(
 SELECT stock_code, COUNT(invoice_no) AS cancel_frequency
 FROM public."Online Retail"
@@ -455,7 +449,7 @@ LEFT JOIN product_cancel_count c ON b.stock_code = c.stock_code
 WHERE a.product_cancel_rate > 10
 ORDER BY 4 DESC
 
----- Recommend to customer the products that are most frequently purchased together
+---- Recommend to the customer the products that are most frequently purchased together
 DROP TABLE IF exists product_recommondation_by_frequency;
 CREATE TABLE product_recommondation_by_frequency AS
 WITH sub AS(
