@@ -95,8 +95,9 @@ All of the bad invoices or blank invoices are registered as from the UK. It mean
 
 ![image](https://github.com/DewieDecimal/Online-Retail-Analysis-with-SQL-and-Tableau/assets/125356334/a06066e4-02dc-4549-8c19-06bf3869d5ea)
 * The top countries with the highest average sales are the Netherlands, Australia, Japan, Sweden, Denmark, etc. This is due to their high average basket sizes. Still, it indicates <b>potential areas for scaling operations</b>.
-* In combination with market research initiatives regarding the market potential, competitive landscape, culture, etc. we could <b>consider upselling, cross-selling, and introducing higher-priced products or services when targeting these countries</b>.
+* In combination with market research initiatives regarding the market potential, competitive landscape, culture, etc. we could <b>consider upselling, cross-selling, and introducing higher-priced products or services when targeting customers in these countries</b>.
 * By focusing on countries with higher average basket sizes, we can allocate resources and marketing efforts more strategically to maximize revenue.
+* We are seeing a sign of cultural behavior for customers in the top 5 countries, that is a tendency to buy things in bulk, which should pair with a lower frequency of buying/shopping.
 * United Kingdom where most of our customers are from, ranks 32/38 with an average basket size of 10 products/items per transaction.
 
 ![image](https://github.com/DewieDecimal/Online-Retail-Analysis-with-SQL-and-Tableau/assets/125356334/183051b0-51a1-4b0e-90d0-db00a3f96a8a)
